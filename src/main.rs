@@ -31,19 +31,19 @@ fn main() {
     // i2c
     let dev = I2cdev::new("/dev/i2c-1").unwrap();
     
-  let cal = Calibration {
-    mag_offset: Vector {
-      x: 9.5,
-      y: 20.78125,
-      z: -28.04101,
-    },
-    mag_scale: Vector {
-      x: 1.49696,
-      y: 1.44312,
-      z: 1.56484,
-    },
+    let cal = Calibration {
+        mag_offset: Vector {
+            x: 9.5,
+            y: 20.78125,
+            z: -28.04101,
+        },
+        mag_scale: Vector {
+            x: 1.49696,
+            y: 1.44312,
+            z: 1.56484,
+        },
 
-    // Gryoscope
+    // Gyroscope
     gyro_bias_offset: Vector {
       x: 0.57159,
       y: -0.5399,
@@ -77,10 +77,10 @@ fn main() {
   Print::ak8963_settings(&mut mpu9250);
 
   // Set up some stuff
-  let mut last_mag_read = Instant::now();
+  let mut _last_mag_read = Instant::now();
   let mut last_read;
   let rate = mpu9250.get_accel_gyro_rate_ms();
-  let mag_rate = 10; // 10 milliseconds per read
+  let _mag_rate = 10; // 10 milliseconds per read
 
     // osc
     let args: Vec<String> = env::args().collect();
@@ -103,34 +103,43 @@ fn main() {
     .unwrap();
 
     sock.send_to(&msg_buf, to_addr).unwrap();
-
-  loop {
-    // Get the accelerometer and gyro data
-    let (va, vg) = mpu9250.get_accel_gyro().unwrap();
-    last_read = Instant::now();
-    print!(
+    
+    // start print timing
+    let print_time = Instant::now();
+    let print_secs = 2;
+    let mut last_print = 0; // print first time around
+ 
+    
+    println!("\n\n\tstart up; send to {}\n", to_addr);
+    
+    loop {
+        // Get the accelerometer and gyro data
+        let (va, vg) = mpu9250.get_accel_gyro().unwrap();
+        last_read = Instant::now();
+    /*print!(
       "\nAccel=>  {{ x: {:.5}, y: {:.5}, z: {:.5} }}",
       va.x, va.y, va.z
     );
     print!(
       "\nGyro=> {{ x: {:.5}, y: {:.5}, z: {:.5} }}",
       vg.x, vg.y, vg.z
-    );
+    );*/
 
     // The mag refresh rate is around 10 milliseconds
-    let mag_elapsed = to_ms(last_mag_read.elapsed());
-    if mag_elapsed >= mag_rate {
-      let vm = mpu9250.get_mag().unwrap();
-      print!(
+      /*  let mag_elapsed = to_ms(last_mag_read.elapsed());
+        if mag_elapsed >= mag_rate {
+            let vm = mpu9250.get_mag().unwrap();
+      
+    print!(
         "\nmag=> {{ x: {:.5}, y: {:.5}, z: {:.5} }}, Temp=> {:0.5}",
         vm.x,
         vm.y,
         vm.z,
         mpu9250.get_temperature_celsius().unwrap()
       );
-      last_mag_read = Instant::now();
-    }
-    println!();
+            last_mag_read = Instant::now();
+        }*/
+    //println!();
 
         // OSC loop
         // accel
@@ -167,5 +176,18 @@ fn main() {
 
     // general relax
     sleep(Duration::from_millis(50));
+    
+
+    /*let time = to_ms(print_time.elapsed());
+    if time > print_rate - last_print {
+        last_print = Instant::now();
+        sleep(Duration::from_millis(rate - elapsed));
+    }*/
+ 
+    if print_time.elapsed().as_secs() > last_print + print_secs {
+        print!("running time; {} secs", print_time.elapsed().as_secs());
+        println!("\t -> \tsending to; {}", to_addr);
+        last_print = print_time.elapsed().as_secs(); // update timing
+    }
   }
 }
